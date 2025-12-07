@@ -20,3 +20,10 @@ export interface GeneratedMetadata {
   medium: string;
   tags: string[];
 }
+
+export interface RepoConfig {
+  owner: string;
+  repo: string;
+  branch: string;
+  token?: string;
+}

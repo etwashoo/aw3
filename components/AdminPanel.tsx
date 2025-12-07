@@ -1,17 +1,28 @@
-import React, { useState, useRef } from 'react';
-import { Artwork } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { Artwork, RepoConfig } from '../types';
 import { generateArtworkMetadata, fileToGenerativePart } from '../services/geminiService';
+import { uploadImageToGitHub, updateGalleryManifest, verifyRepoAccess } from '../services/githubService';
 
 interface AdminPanelProps {
   artworks: Artwork[];
-  onAddArtwork: (art: Artwork) => void;
-  onDeleteArtwork: (id: string) => void;
+  repoConfig: RepoConfig;
+  onConfigChange: (config: RepoConfig) => void;
+  onRefreshData: () => void;
   onLogout: () => void;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ artworks, onAddArtwork, onDeleteArtwork, onLogout }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ 
+  artworks, 
+  repoConfig, 
+  onConfigChange, 
+  onRefreshData,
+  onLogout 
+}) => {
+  const [activeTab, setActiveTab] = useState<'upload' | 'settings'>('upload');
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalysing, setIsAnalysing] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
+  
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,6 +33,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ artworks, onAddArtwork, 
   const [medium, setMedium] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Settings State
+  const [localConfig, setLocalConfig] = useState<RepoConfig>(repoConfig);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [configSuccess, setConfigSuccess] = useState(false);
+
+  useEffect(() => {
+    // If we don't have a token or repo configured, force the settings tab
+    if (!repoConfig.owner || !repoConfig.repo || !repoConfig.token) {
+      setActiveTab('settings');
+    }
+  }, [repoConfig]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -61,34 +84,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ artworks, onAddArtwork, 
     }
   };
 
-  const handleSave = () => {
-    if (!previewUrl || !title) {
+  const handlePublish = async () => {
+    if (!file || !title) {
       setError("Please select an image and ensure a title is set.");
       return;
     }
+    if (!repoConfig.token) {
+        setError("GitHub Token is missing. Please check Settings.");
+        return;
+    }
 
     setIsUploading(true);
+    setUploadStatus('Preparing...');
     
-    // In a real app, upload image to storage here.
-    // We are using base64 for local demo persistence.
-    const reader = new FileReader();
-    reader.onload = () => {
-       const newArtwork: Artwork = {
-        id: crypto.randomUUID(),
-        imageUrl: reader.result as string, // Saving full base64 for demo
-        title,
-        description,
-        medium,
-        tags,
-        createdAt: Date.now()
-      };
-      
-      onAddArtwork(newArtwork);
-      resetForm();
-      setIsUploading(false);
-    };
-    if (file) {
-        reader.readAsDataURL(file);
+    try {
+        const base64Data = await fileToGenerativePart(file);
+        
+        setUploadStatus('Uploading image to GitHub...');
+        const imageUrl = await uploadImageToGitHub(file, base64Data, repoConfig);
+        
+        setUploadStatus('Updating gallery manifest...');
+        const newArtwork: Artwork = {
+            id: crypto.randomUUID(),
+            imageUrl,
+            title,
+            description,
+            medium,
+            tags,
+            createdAt: Date.now()
+        };
+        
+        await updateGalleryManifest(newArtwork, repoConfig);
+        
+        setUploadStatus('Success!');
+        onRefreshData();
+        resetForm();
+        setTimeout(() => {
+            setIsUploading(false);
+            setUploadStatus('');
+        }, 1500);
+
+    } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Failed to publish artwork");
+        setIsUploading(false);
+        setUploadStatus('');
     }
   };
 
@@ -102,177 +142,268 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ artworks, onAddArtwork, 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleExport = () => {
-    const dataStr = JSON.stringify(artworks, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = "gallery-data.json";
-    link.click();
-    URL.revokeObjectURL(url);
+  const saveSettings = async () => {
+      setIsVerifying(true);
+      setError(null);
+      setConfigSuccess(false);
+      try {
+          const isValid = await verifyRepoAccess(localConfig);
+          if (isValid) {
+              onConfigChange(localConfig);
+              setConfigSuccess(true);
+              setTimeout(() => setActiveTab('upload'), 1000);
+          } else {
+              setError("Could not access repository. Check Owner, Repo, and Token permissions.");
+          }
+      } catch (e) {
+          setError("Verification failed.");
+      } finally {
+          setIsVerifying(false);
+      }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      <div className="flex justify-between items-center mb-8 border-b border-stone-200 pb-4">
-        <div>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-stone-200 pb-4">
+        <div className="mb-4 md:mb-0">
            <h2 className="text-2xl font-serif text-stone-900">Curator Dashboard</h2>
-           <p className="text-stone-500 text-sm mt-1">Upload new pieces and let AI curate the details.</p>
+           <p className="text-stone-500 text-sm mt-1">
+               {repoConfig.owner && repoConfig.repo ? `Connected to ${repoConfig.owner}/${repoConfig.repo}` : 'Not connected to a repository'}
+           </p>
         </div>
         <div className="flex gap-4">
-             <button 
-                onClick={handleExport}
-                className="text-stone-600 hover:text-stone-900 text-sm font-medium underline decoration-stone-300 underline-offset-4"
+            <button 
+                onClick={() => setActiveTab('upload')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'upload' ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:text-stone-900'}`}
             >
-                Export JSON
+                Upload
             </button>
             <button 
+                onClick={() => setActiveTab('settings')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'settings' ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:text-stone-900'}`}
+            >
+                Settings
+            </button>
+            <div className="h-6 w-px bg-stone-300 mx-2 self-center"></div>
+            <button 
                 onClick={onLogout}
-                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                className="text-red-600 hover:text-red-800 text-sm font-medium self-center"
             >
                 Log Out
             </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Left Col: Upload & Preview */}
-        <div className="space-y-6">
-          <div 
-            className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center transition-colors min-h-[300px] ${
-                previewUrl ? 'border-stone-200 bg-stone-50' : 'border-stone-300 hover:border-stone-400 hover:bg-stone-50 cursor-pointer'
-            }`}
-            onClick={() => !previewUrl && fileInputRef.current?.click()}
-          >
-             {previewUrl ? (
-                 <div className="relative w-full h-full">
-                     <img src={previewUrl} alt="Preview" className="max-h-[400px] mx-auto object-contain shadow-lg" />
-                     <button 
-                        onClick={(e) => { e.stopPropagation(); resetForm(); }}
-                        className="absolute top-2 right-2 bg-white/80 p-2 rounded-full hover:bg-white text-stone-600 shadow-sm"
-                     >
-                         ✕
-                     </button>
-                 </div>
-             ) : (
-                 <div className="space-y-4">
-                     <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto text-stone-400">
-                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                     </div>
-                     <div>
-                        <p className="text-lg font-medium text-stone-900">Click to upload artwork</p>
-                        <p className="text-sm text-stone-500">JPG, PNG up to 10MB</p>
-                     </div>
-                 </div>
-             )}
-             <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleFileChange}
-            />
+      {activeTab === 'settings' && (
+          <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-stone-200">
+              <h3 className="text-xl font-medium text-stone-900 mb-6">Repository Configuration</h3>
+              <p className="text-stone-500 text-sm mb-6 bg-stone-50 p-4 rounded">
+                  Configure the GitHub repository where your gallery data and images will be stored. 
+                  The repository must be <strong>Public</strong> for images to be visible on the website.
+              </p>
+              
+              <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-stone-700 mb-1">GitHub Username</label>
+                        <input 
+                            type="text" 
+                            value={localConfig.owner}
+                            onChange={(e) => setLocalConfig({...localConfig, owner: e.target.value})}
+                            className="w-full px-4 py-2 border border-stone-300 rounded outline-none focus:border-stone-500"
+                            placeholder="e.g., octocat"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-stone-700 mb-1">Repository Name</label>
+                        <input 
+                            type="text" 
+                            value={localConfig.repo}
+                            onChange={(e) => setLocalConfig({...localConfig, repo: e.target.value})}
+                            className="w-full px-4 py-2 border border-stone-300 rounded outline-none focus:border-stone-500"
+                            placeholder="e.g., my-art-gallery"
+                        />
+                      </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Branch</label>
+                    <input 
+                        type="text" 
+                        value={localConfig.branch}
+                        onChange={(e) => setLocalConfig({...localConfig, branch: e.target.value})}
+                        className="w-full px-4 py-2 border border-stone-300 rounded outline-none focus:border-stone-500"
+                        placeholder="main"
+                    />
+                  </div>
+                  
+                  <div className="pt-2">
+                    <label className="block text-sm font-medium text-stone-700 mb-1">GitHub Personal Access Token (Classic)</label>
+                    <input 
+                        type="password" 
+                        value={localConfig.token || ''}
+                        onChange={(e) => setLocalConfig({...localConfig, token: e.target.value})}
+                        className="w-full px-4 py-2 border border-stone-300 rounded outline-none focus:border-stone-500"
+                        placeholder="ghp_..."
+                    />
+                    <p className="text-xs text-stone-500 mt-1">
+                        Token must have <code>repo</code> scope to upload images and update the gallery manifest.
+                    </p>
+                  </div>
+
+                  <div className="pt-4 mt-4 border-t border-stone-100">
+                      <button 
+                        onClick={saveSettings}
+                        disabled={isVerifying}
+                        className={`w-full py-2 rounded font-medium text-white transition-colors ${configSuccess ? 'bg-green-600' : 'bg-stone-900 hover:bg-stone-800'}`}
+                      >
+                          {isVerifying ? 'Verifying...' : configSuccess ? 'Connected!' : 'Save Configuration'}
+                      </button>
+                      {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
+                  </div>
+              </div>
           </div>
+      )}
 
-          {previewUrl && (
-              <button
-                onClick={handleAnalyze}
-                disabled={isAnalysing}
-                className="w-full py-3 bg-stone-900 text-white font-medium rounded shadow hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
-              >
-                  {isAnalysing ? (
-                      <>
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Analysing with Gemini...
-                      </>
-                  ) : (
-                      <>
-                        <span>✨</span> Generate Metadata
-                      </>
-                  )}
-              </button>
-          )}
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-        </div>
-
-        {/* Right Col: Metadata Form */}
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-stone-200">
-            <h3 className="text-lg font-medium text-stone-900 mb-6">Artwork Details</h3>
-            <div className="space-y-5">
-                <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">Title</label>
-                    <input 
-                        type="text" 
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
-                        placeholder="Untitled"
-                    />
-                </div>
-                
-                <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">Medium</label>
-                    <input 
-                        type="text" 
-                        value={medium}
-                        onChange={(e) => setMedium(e.target.value)}
-                        className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
-                        placeholder="e.g. Oil on Canvas"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">Curatorial Description</label>
-                    <textarea 
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        rows={6}
-                        className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
-                        placeholder="Generated description will appear here..."
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">Tags</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                        {tags.map((tag, idx) => (
-                            <span key={idx} className="bg-stone-100 text-stone-700 px-2 py-1 rounded text-xs flex items-center gap-1">
-                                {tag}
-                                <button onClick={() => setTags(tags.filter((_, i) => i !== idx))} className="hover:text-red-500">×</button>
-                            </span>
-                        ))}
+      {activeTab === 'upload' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Left Col: Upload & Preview */}
+            <div className="space-y-6">
+            <div 
+                className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center transition-colors min-h-[300px] ${
+                    previewUrl ? 'border-stone-200 bg-stone-50' : 'border-stone-300 hover:border-stone-400 hover:bg-stone-50 cursor-pointer'
+                }`}
+                onClick={() => !previewUrl && fileInputRef.current?.click()}
+            >
+                {previewUrl ? (
+                    <div className="relative w-full h-full">
+                        <img src={previewUrl} alt="Preview" className="max-h-[400px] mx-auto object-contain shadow-lg" />
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); resetForm(); }}
+                            className="absolute top-2 right-2 bg-white/80 p-2 rounded-full hover:bg-white text-stone-600 shadow-sm"
+                        >
+                            ✕
+                        </button>
                     </div>
-                </div>
-                
-                <div className="pt-4 border-t border-stone-100">
-                    <button 
-                        onClick={handleSave}
-                        disabled={isUploading || !title}
-                        className="w-full py-3 bg-stone-900 text-white font-serif tracking-wide rounded hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                        {isUploading ? 'Saving to Gallery...' : 'Publish to Gallery'}
-                    </button>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto text-stone-400">
+                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div>
+                            <p className="text-lg font-medium text-stone-900">Click to upload artwork</p>
+                            <p className="text-sm text-stone-500">JPG, PNG up to 5MB</p>
+                        </div>
+                    </div>
+                )}
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleFileChange}
+                />
+            </div>
+
+            {previewUrl && (
+                <button
+                    onClick={handleAnalyze}
+                    disabled={isAnalysing || isUploading}
+                    className="w-full py-3 bg-stone-100 text-stone-900 border border-stone-200 font-medium rounded shadow-sm hover:bg-stone-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+                >
+                    {isAnalysing ? (
+                        <>
+                            <svg className="animate-spin h-5 w-5 text-stone-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Analysing with Gemini...
+                        </>
+                    ) : (
+                        <>
+                            <span>✨</span> Auto-Generate Metadata
+                        </>
+                    )}
+                </button>
+            )}
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            </div>
+
+            {/* Right Col: Metadata Form */}
+            <div className="bg-white p-8 rounded-lg shadow-sm border border-stone-200 relative overflow-hidden">
+                {isUploading && (
+                    <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                         <svg className="animate-spin h-8 w-8 text-stone-900 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                         <p className="text-stone-900 font-medium">{uploadStatus}</p>
+                    </div>
+                )}
+
+                <h3 className="text-lg font-medium text-stone-900 mb-6">Artwork Details</h3>
+                <div className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-stone-700 mb-1">Title</label>
+                        <input 
+                            type="text" 
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
+                            placeholder="Untitled"
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-stone-700 mb-1">Medium</label>
+                        <input 
+                            type="text" 
+                            value={medium}
+                            onChange={(e) => setMedium(e.target.value)}
+                            className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
+                            placeholder="e.g. Oil on Canvas"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-stone-700 mb-1">Curatorial Description</label>
+                        <textarea 
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            rows={6}
+                            className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
+                            placeholder="Generated description will appear here..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-stone-700 mb-1">Tags</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {tags.map((tag, idx) => (
+                                <span key={idx} className="bg-stone-100 text-stone-700 px-2 py-1 rounded text-xs flex items-center gap-1">
+                                    {tag}
+                                    <button onClick={() => setTags(tags.filter((_, i) => i !== idx))} className="hover:text-red-500">×</button>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-stone-100">
+                        <button 
+                            onClick={handlePublish}
+                            disabled={isUploading || !title}
+                            className="w-full py-3 bg-stone-900 text-white font-serif tracking-wide rounded hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            Publish to Gallery
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-      </div>
+      )}
 
       {/* Existing Artworks List */}
       <div className="mt-16">
           <h3 className="text-xl font-serif text-stone-900 mb-6">Manage Collection ({artworks.length})</h3>
+          <p className="text-stone-500 text-sm mb-4">Note: Deleting items from the UI currently requires manual removal from the JSON/Images on GitHub to fully sync.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
               {artworks.map(art => (
                   <div key={art.id} className="group relative border border-stone-200 rounded overflow-hidden">
                       <div className="aspect-square bg-stone-100 relative">
                           <img src={art.imageUrl} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" alt={art.title} />
-                          <button 
-                            onClick={() => onDeleteArtwork(art.id)}
-                            className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 shadow-sm"
-                            title="Delete"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          </button>
                       </div>
                       <div className="p-3 bg-white">
                           <p className="font-medium text-stone-900 truncate">{art.title}</p>
