@@ -1,0 +1,5 @@
+{
+  "name": "MuseAI Gallery",
+  "description": "An elegant artist portfolio where Gemini AI acts as the curator, automatically generating titles and descriptions for uploaded artwork. Features a simulated Admin CMS for easy updates.",
+  "requestFramePermissions": []
+}
