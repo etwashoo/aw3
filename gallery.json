@@ -1,5 +1,20 @@
 [
   {
+    "id": "c90986e1-2f81-44df-b76f-298f0ef1cdd9",
+    "imageUrl": "https://raw.githubusercontent.com/etwashoo/aw3/main/images/1765114847136-img20170404103903.jpg",
+    "title": "Verdant Passage",
+    "description": "The composition guides the eye along a gentle thoroughfare, flanked by the subtle emergence of spring's verdant growth. Overcast light imbues the scene with a serene quietude, highlighting the textural interplay of bark, asphalt, and nascent foliage. A sense of tranquil expectation pervades this natural corridor, inviting quiet contemplation.",
+    "medium": "Digital Photography",
+    "tags": [
+      "Urban Landscape",
+      "Springtime",
+      "Pathway",
+      "Nature",
+      "Serenity"
+    ],
+    "createdAt": 1765114852371
+  },
+  {
     "id": "80b95483-5d5f-44fc-a6dc-2496ba9d1000",
     "imageUrl": "https://raw.githubusercontent.com/etwashoo/aw3/main/images/1765114182000-img20170404102932.jpg",
     "title": "Transitional Facade",
