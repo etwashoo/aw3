@@ -1,5 +1,20 @@
 [
   {
+    "id": "6800b105-222b-44f6-9350-8eef07ef10f7",
+    "imageUrl": "https://raw.githubusercontent.com/etwashoo/aw3/main/images/1765106822715-hannover2.jpg",
+    "title": "Promise of the Open Water",
+    "description": "The scene captures a quiet contemplation, a lone figure resting beside a venerable wooden vessel under a vast, crisp winter sky. The interplay of strong, raking light and deep shadows emphasizes the textures of the boat's hull and the intricate network of bare branches, evoking a sense of calm anticipation.",
+    "medium": "Digital Photography",
+    "tags": [
+      "Winter Light",
+      "Nautical Still Life",
+      "Bare Trees",
+      "Human Presence",
+      "Wooden Craft"
+    ],
+    "createdAt": 1765106825010
+  },
+  {
     "id": "7034ea53-28ab-49a3-93d7-f63f9d3ae396",
     "imageUrl": "https://raw.githubusercontent.com/etwashoo/aw3/main/images/1765106699733-hannover1.jpg",
     "title": "Veridian Promenade",
