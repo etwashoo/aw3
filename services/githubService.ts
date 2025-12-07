@@ -11,11 +11,58 @@ const b64_to_utf8 = (str: string) => {
   return decodeURIComponent(escape(window.atob(str)));
 };
 
+export const getRepoDetails = async (config: RepoConfig) => {
+  if (!config.token) return null;
+  try {
+    const response = await fetch(`${BASE_URL}/repos/${config.owner}/${config.repo}`, {
+      headers: {
+        'Authorization': `Bearer ${config.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (e) {
+    return null;
+  }
+};
+
 export const fetchGalleryFromGitHub = async (config: RepoConfig): Promise<Artwork[]> => {
   if (!config.owner || !config.repo) return [];
   
-  // Use raw URL for public read access to avoid rate limits and token requirements for readers
   const branch = config.branch || 'main';
+
+  // OPTION 1: authenticated API fetch (Immediate consistency, bypasses CDN cache)
+  // We use this if a token is available so the artist sees their updates instantly.
+  if (config.token) {
+    try {
+      const response = await fetch(`${BASE_URL}/repos/${config.owner}/${config.repo}/contents/gallery.json?ref=${branch}`, {
+        headers: {
+          'Authorization': `Bearer ${config.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // GitHub API returns content in base64
+        if (data.content) {
+          const cleanContent = data.content.replace(/\n/g, '');
+          const jsonString = b64_to_utf8(cleanContent);
+          return JSON.parse(jsonString);
+        }
+      } else if (response.status === 404) {
+        // File doesn't exist yet, return empty array
+        return [];
+      }
+    } catch (e) {
+      console.warn("API fetch failed, attempting fallback to Raw URL", e);
+    }
+  }
+
+  // OPTION 2: Raw URL fetch (Public access, subject to caching)
+  // This is what regular visitors use.
   const url = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${branch}/gallery.json?t=${Date.now()}`;
   
   try {
@@ -51,7 +98,7 @@ export const uploadImageToGitHub = async (
 ): Promise<string> => {
   if (!config.token) throw new Error("Authentication required");
 
-  // Clean filename
+  // Clean filename to be URL safe
   const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '').toLowerCase();
   const path = `images/${Date.now()}-${cleanName}`;
   const branch = config.branch || 'main';
@@ -75,6 +122,7 @@ export const uploadImageToGitHub = async (
   }
 
   // Return the Raw URL
+  // Note: For private repos, this URL is not publicly accessible
   return `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${branch}/${path}`;
 };
 
@@ -104,7 +152,6 @@ export const updateGalleryManifest = async (
       const data = await getResponse.json();
       sha = data.sha;
       if (data.content) {
-        // GitHub API returns content with newlines, remove them
         const cleanContent = data.content.replace(/\n/g, '');
         const jsonString = b64_to_utf8(cleanContent);
         currentArtworks = JSON.parse(jsonString);

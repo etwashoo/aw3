@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Artwork, RepoConfig } from '../types';
 import { generateArtworkMetadata, fileToGenerativePart } from '../services/geminiService';
-import { uploadImageToGitHub, updateGalleryManifest, verifyRepoAccess } from '../services/githubService';
+import { uploadImageToGitHub, updateGalleryManifest, verifyRepoAccess, getRepoDetails } from '../services/githubService';
 
 interface AdminPanelProps {
   artworks: Artwork[];
@@ -38,6 +38,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [localConfig, setLocalConfig] = useState<RepoConfig>(repoConfig);
   const [isVerifying, setIsVerifying] = useState(false);
   const [configSuccess, setConfigSuccess] = useState(false);
+  const [repoWarning, setRepoWarning] = useState<string | null>(null);
 
   useEffect(() => {
     // If we don't have a token or repo configured, force the settings tab
@@ -145,13 +146,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const saveSettings = async () => {
       setIsVerifying(true);
       setError(null);
+      setRepoWarning(null);
       setConfigSuccess(false);
       try {
           const isValid = await verifyRepoAccess(localConfig);
           if (isValid) {
+              // Check visibility
+              const details = await getRepoDetails(localConfig);
+              if (details && details.private) {
+                setRepoWarning("Warning: This repository is set to PRIVATE. Images uploaded here will NOT be visible on the public website. Please change the repository visibility to Public in GitHub Settings.");
+              }
+
               onConfigChange(localConfig);
               setConfigSuccess(true);
-              setTimeout(() => setActiveTab('upload'), 1000);
+              if (!details?.private) {
+                setTimeout(() => setActiveTab('upload'), 1000);
+              }
           } else {
               setError("Could not access repository. Check Owner, Repo, and Token permissions.");
           }
@@ -246,7 +256,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="ghp_..."
                     />
                     <p className="text-xs text-stone-500 mt-1">
-                        Token must have <code>repo</code> scope to upload images and update the gallery manifest.
+                        Token must have <code>repo</code> scope.
                     </p>
                   </div>
 
@@ -259,6 +269,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           {isVerifying ? 'Verifying...' : configSuccess ? 'Connected!' : 'Save Configuration'}
                       </button>
                       {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
+                      {repoWarning && (
+                        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+                           <strong>Attention:</strong> {repoWarning}
+                        </div>
+                      )}
                   </div>
               </div>
           </div>
