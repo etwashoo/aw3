@@ -8,32 +8,43 @@ import { fetchGalleryFromGitHub } from './services/githubService';
 const CONFIG_KEY = 'museai_github_config';
 const ARTIST_PASSWORD = 'muse';
 
+// ----------------------------------------------------------------------
+// ⚠️ PUBLIC CONFIGURATION ⚠️
+// To make your gallery visible to visitors, you must update these values
+// to match your GitHub repository details.
+// ----------------------------------------------------------------------
+const PUBLIC_REPO_CONFIG: RepoConfig = {
+  owner: '', // Enter your GitHub username here (e.g., 'alexandra-art')
+  repo: '',  // Enter your Repository name here (e.g., 'portfolio')
+  branch: 'main',
+};
+// ----------------------------------------------------------------------
+
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.GALLERY);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
-  const [repoConfig, setRepoConfig] = useState<RepoConfig>({
-    owner: '',
-    repo: '',
-    branch: 'main',
-    token: ''
-  });
+  
+  // Initialize config with PUBLIC defaults, will be overridden by local storage if logged in
+  const [repoConfig, setRepoConfig] = useState<RepoConfig>(PUBLIC_REPO_CONFIG);
   
   const [passwordInput, setPasswordInput] = useState('');
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Load config from local storage (including token for convenience)
+  // Load config from local storage (prioritizing local settings for Admin testing)
   useEffect(() => {
     const savedConfig = localStorage.getItem(CONFIG_KEY);
     if (savedConfig) {
       try {
         const parsed = JSON.parse(savedConfig);
-        setRepoConfig({
-            owner: parsed.owner || '',
-            repo: parsed.repo || '',
-            branch: parsed.branch || 'main',
+        setRepoConfig(prev => ({
+            ...prev,
+            // If local storage has values, use them, otherwise fallback to PUBLIC config
+            owner: parsed.owner || PUBLIC_REPO_CONFIG.owner,
+            repo: parsed.repo || PUBLIC_REPO_CONFIG.repo,
+            branch: parsed.branch || PUBLIC_REPO_CONFIG.branch,
             token: parsed.token || '' 
-        });
+        }));
       } catch (e) {
         console.error(e);
       }
@@ -73,6 +84,8 @@ const App: React.FC = () => {
     localStorage.setItem(CONFIG_KEY, JSON.stringify(newConfig));
   };
 
+  const isConfigured = repoConfig.owner && repoConfig.repo;
+
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col">
       <Header viewMode={viewMode} setViewMode={setViewMode} />
@@ -80,12 +93,36 @@ const App: React.FC = () => {
       <main className="flex-grow">
         {viewMode === ViewMode.GALLERY && (
           <>
-             {isLoadingData && artworks.length === 0 ? (
-                 <div className="flex justify-center items-center h-64">
-                     <div className="animate-pulse text-stone-400 font-serif">Loading Gallery...</div>
+             {!isConfigured ? (
+                 <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-2xl">
+                        <h2 className="text-xl font-serif text-yellow-800 mb-2">Setup Required</h2>
+                        <p className="text-yellow-700 mb-4">
+                            The gallery configuration is missing. 
+                        </p>
+                        <p className="text-sm text-yellow-800/80 mb-4">
+                            <strong>If you are the Artist:</strong> Log in to the Admin Panel to configure your repository. 
+                            <br/>
+                            <strong>To make this public:</strong> You must update the <code>PUBLIC_REPO_CONFIG</code> in <code>App.tsx</code> with your GitHub username and repository name.
+                        </p>
+                        <button 
+                            onClick={() => setViewMode(ViewMode.LOGIN)}
+                            className="bg-yellow-100 hover:bg-yellow-200 text-yellow-900 px-4 py-2 rounded transition-colors text-sm font-medium"
+                        >
+                            Go to Login
+                        </button>
+                    </div>
                  </div>
              ) : (
-                <Gallery artworks={artworks} />
+                 <>
+                    {isLoadingData && artworks.length === 0 ? (
+                        <div className="flex justify-center items-center h-64">
+                            <div className="animate-pulse text-stone-400 font-serif">Loading Gallery...</div>
+                        </div>
+                    ) : (
+                        <Gallery artworks={artworks} />
+                    )}
+                 </>
              )}
           </>
         )}

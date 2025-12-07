@@ -275,6 +275,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       )}
                   </div>
+                  
+                  {configSuccess && (
+                     <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded">
+                        <h4 className="text-blue-900 font-medium mb-2">🚀 Make Site Public</h4>
+                        <p className="text-sm text-blue-800 mb-3">
+                            To make the gallery visible to visitors who are not logged in, you must manually update 
+                            the <code>App.tsx</code> file with your repository details.
+                        </p>
+                        <div className="bg-white p-3 rounded border border-blue-100 font-mono text-xs text-stone-600 overflow-x-auto">
+                            const PUBLIC_REPO_CONFIG: RepoConfig = &#123;<br/>
+                            &nbsp;&nbsp;owner: '{localConfig.owner}',<br/>
+                            &nbsp;&nbsp;repo: '{localConfig.repo}',<br/>
+                            &nbsp;&nbsp;branch: '{localConfig.branch}',<br/>
+                            &#125;;
+                        </div>
+                        <p className="text-xs text-blue-700 mt-2">
+                            Copy the code above and paste it into the <code>PUBLIC_REPO_CONFIG</code> section at the top of <strong>App.tsx</strong>.
+                        </p>
+                     </div>
+                  )}
               </div>
           </div>
       )}
@@ -346,6 +366,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
                          <svg className="animate-spin h-8 w-8 text-stone-900 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                          <p className="text-stone-900 font-medium">{uploadStatus}</p>
+                         <p className="text-stone-500 text-xs mt-2">Note: Public updates may take up to 5 mins to appear.</p>
                     </div>
                 )}
 
