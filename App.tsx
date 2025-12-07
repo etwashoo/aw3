@@ -87,7 +87,7 @@ const App: React.FC = () => {
   const isConfigured = repoConfig.owner && repoConfig.repo;
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col selection:bg-zinc-900 selection:text-white">
       <Header viewMode={viewMode} setViewMode={setViewMode} />
       
       <main className="flex-grow">
@@ -95,29 +95,28 @@ const App: React.FC = () => {
           <>
              {!isConfigured ? (
                  <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-2xl">
-                        <h2 className="text-xl font-serif text-yellow-800 mb-2">Setup Required</h2>
-                        <p className="text-yellow-700 mb-4">
-                            The gallery configuration is missing. 
+                    <div className="bg-zinc-50 border border-zinc-200 p-8 max-w-2xl">
+                        <h2 className="text-xl font-serif text-zinc-900 mb-2">Setup Required</h2>
+                        <p className="text-zinc-600 mb-6 font-light">
+                            The gallery configuration is currently initializing.
                         </p>
-                        <p className="text-sm text-yellow-800/80 mb-4">
-                            <strong>If you are the Artist:</strong> Log in to the Admin Panel to configure your repository. 
-                            <br/>
-                            <strong>To make this public:</strong> You must update the <code>PUBLIC_REPO_CONFIG</code> in <code>App.tsx</code> with your GitHub username and repository name.
+                        <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
+                            <strong>Artist:</strong> Login to configure.<br/>
+                            <strong>Developer:</strong> Update <code>PUBLIC_REPO_CONFIG</code> in <code>App.tsx</code>.
                         </p>
                         <button 
                             onClick={() => setViewMode(ViewMode.LOGIN)}
-                            className="bg-yellow-100 hover:bg-yellow-200 text-yellow-900 px-4 py-2 rounded transition-colors text-sm font-medium"
+                            className="text-xs uppercase tracking-widest border-b border-zinc-900 pb-1 hover:opacity-50 transition-opacity"
                         >
-                            Go to Login
+                            Access Login
                         </button>
                     </div>
                  </div>
              ) : (
                  <>
                     {isLoadingData && artworks.length === 0 ? (
-                        <div className="flex justify-center items-center h-64">
-                            <div className="animate-pulse text-stone-400 font-serif">Loading Gallery...</div>
+                        <div className="flex justify-center items-center h-[60vh]">
+                            <div className="animate-pulse text-zinc-300 font-serif text-xl tracking-widest">LOADING COLLECTION</div>
                         </div>
                     ) : (
                         <Gallery artworks={artworks} />
@@ -128,27 +127,25 @@ const App: React.FC = () => {
         )}
 
         {viewMode === ViewMode.LOGIN && (
-          <div className="flex items-center justify-center min-h-[60vh] px-4">
-            <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg border border-stone-100">
-              <h2 className="text-2xl font-serif text-center mb-2 text-stone-900">Artist Access</h2>
-              <p className="text-center text-stone-500 text-sm mb-6">Enter the studio password to manage your collection.</p>
+          <div className="flex items-center justify-center min-h-[70vh] px-4">
+            <div className="w-full max-w-sm">
+              <h2 className="text-3xl font-serif text-center mb-8 text-zinc-900">Artist Access</h2>
               
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">Password</label>
                   <input
                     type="password"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none"
-                    placeholder="Enter password..."
+                    className="w-full px-0 py-2 border-b border-zinc-300 focus:border-zinc-900 outline-none bg-transparent placeholder-zinc-400 text-center font-light transition-colors"
+                    placeholder="ENTER PASSWORD"
                     autoFocus
                   />
                 </div>
-                {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+                {loginError && <p className="text-red-900 text-xs text-center uppercase tracking-wide">{loginError}</p>}
                 <button 
                   type="submit"
-                  className="w-full py-2 bg-stone-900 text-white rounded hover:bg-stone-800 transition-colors"
+                  className="w-full py-4 bg-zinc-900 text-white hover:bg-zinc-800 transition-colors text-xs uppercase tracking-[0.2em]"
                 >
                   Enter Studio
                 </button>
@@ -170,10 +167,15 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="bg-stone-900 text-stone-400 py-12 border-t border-stone-800">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="font-serif italic text-lg mb-4 text-stone-300">"Art is not what you see, but what you make others see."</p>
-          <p className="text-sm tracking-wide">© {new Date().getFullYear()} Alexandra Studios. Powered by Gemini AI & GitHub.</p>
+      <footer className="bg-white text-zinc-900 py-16 border-t border-zinc-100 mt-12">
+        <div className="max-w-[1800px] mx-auto px-6 text-center">
+          <p className="font-serif italic text-xl mb-6 text-zinc-900">"Art is not what you see, but what you make others see."</p>
+          <div className="flex justify-center gap-8 mb-8">
+             <span className="h-px w-8 bg-zinc-300 self-center"></span>
+             <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">Est. 2024</span>
+             <span className="h-px w-8 bg-zinc-300 self-center"></span>
+          </div>
+          <p className="text-[10px] tracking-widest text-zinc-300 uppercase">© Alexandra Galerie • Powered by Gemini</p>
         </div>
       </footer>
     </div>

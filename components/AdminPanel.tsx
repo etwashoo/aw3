@@ -101,10 +101,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
         const base64Data = await fileToGenerativePart(file);
         
-        setUploadStatus('Uploading image to GitHub...');
+        setUploadStatus('Uploading to Archives...');
         const imageUrl = await uploadImageToGitHub(file, base64Data, repoConfig);
         
-        setUploadStatus('Updating gallery manifest...');
+        setUploadStatus('Updating Catalogue...');
         const newArtwork: Artwork = {
             id: crypto.randomUUID(),
             imageUrl,
@@ -117,7 +117,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         
         await updateGalleryManifest(newArtwork, repoConfig);
         
-        setUploadStatus('Success!');
+        setUploadStatus('Published Successfully');
         onRefreshData();
         resetForm();
         setTimeout(() => {
@@ -154,7 +154,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               // Check visibility
               const details = await getRepoDetails(localConfig);
               if (details && details.private) {
-                setRepoWarning("Warning: This repository is set to PRIVATE. Images uploaded here will NOT be visible on the public website. Please change the repository visibility to Public in GitHub Settings.");
+                setRepoWarning("Repository is PRIVATE. Images will not be visible on public site.");
               }
 
               onConfigChange(localConfig);
@@ -163,7 +163,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 setTimeout(() => setActiveTab('upload'), 1000);
               }
           } else {
-              setError("Could not access repository. Check Owner, Repo, and Token permissions.");
+              setError("Access Denied. Verify Token scopes.");
           }
       } catch (e) {
           setError("Verification failed.");
@@ -173,31 +173,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-stone-200 pb-4">
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-100 pb-6">
         <div className="mb-4 md:mb-0">
-           <h2 className="text-2xl font-serif text-stone-900">Curator Dashboard</h2>
-           <p className="text-stone-500 text-sm mt-1">
-               {repoConfig.owner && repoConfig.repo ? `Connected to ${repoConfig.owner}/${repoConfig.repo}` : 'Not connected to a repository'}
+           <h2 className="text-3xl font-serif text-zinc-900">Curator Dashboard</h2>
+           <p className="text-zinc-400 text-xs uppercase tracking-widest mt-2">
+               {repoConfig.owner && repoConfig.repo ? `Connected: ${repoConfig.owner} / ${repoConfig.repo}` : 'Not Connected'}
            </p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-8">
             <button 
                 onClick={() => setActiveTab('upload')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'upload' ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:text-stone-900'}`}
+                className={`pb-1 text-xs uppercase tracking-widest transition-colors ${activeTab === 'upload' ? 'border-b border-zinc-900 text-zinc-900' : 'text-zinc-400 hover:text-zinc-900'}`}
             >
                 Upload
             </button>
             <button 
                 onClick={() => setActiveTab('settings')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'settings' ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:text-stone-900'}`}
+                className={`pb-1 text-xs uppercase tracking-widest transition-colors ${activeTab === 'settings' ? 'border-b border-zinc-900 text-zinc-900' : 'text-zinc-400 hover:text-zinc-900'}`}
             >
                 Settings
             </button>
-            <div className="h-6 w-px bg-stone-300 mx-2 self-center"></div>
             <button 
                 onClick={onLogout}
-                className="text-red-600 hover:text-red-800 text-sm font-medium self-center"
+                className="pb-1 text-xs uppercase tracking-widest text-red-900/50 hover:text-red-900 transition-colors"
             >
                 Log Out
             </button>
@@ -205,94 +204,83 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
 
       {activeTab === 'settings' && (
-          <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-stone-200">
-              <h3 className="text-xl font-medium text-stone-900 mb-6">Repository Configuration</h3>
-              <p className="text-stone-500 text-sm mb-6 bg-stone-50 p-4 rounded">
-                  Configure the GitHub repository where your gallery data and images will be stored. 
-                  The repository must be <strong>Public</strong> for images to be visible on the website.
-              </p>
+          <div className="max-w-2xl mx-auto bg-zinc-50 p-10 border border-zinc-100">
+              <h3 className="text-lg font-serif text-zinc-900 mb-8">Repository Link</h3>
               
-              <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">GitHub Username</label>
+                        <label className="block text-xs font-bold uppercase tracking-wide text-zinc-500 mb-2">GitHub User</label>
                         <input 
                             type="text" 
                             value={localConfig.owner}
                             onChange={(e) => setLocalConfig({...localConfig, owner: e.target.value})}
-                            className="w-full px-4 py-2 border border-stone-300 rounded outline-none focus:border-stone-500"
-                            placeholder="e.g., octocat"
+                            className="w-full px-4 py-3 border border-zinc-200 bg-white focus:border-zinc-900 outline-none transition-colors text-sm"
+                            placeholder="username"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">Repository Name</label>
+                        <label className="block text-xs font-bold uppercase tracking-wide text-zinc-500 mb-2">Repository</label>
                         <input 
                             type="text" 
                             value={localConfig.repo}
                             onChange={(e) => setLocalConfig({...localConfig, repo: e.target.value})}
-                            className="w-full px-4 py-2 border border-stone-300 rounded outline-none focus:border-stone-500"
-                            placeholder="e.g., my-art-gallery"
+                            className="w-full px-4 py-3 border border-zinc-200 bg-white focus:border-zinc-900 outline-none transition-colors text-sm"
+                            placeholder="repo-name"
                         />
                       </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">Branch</label>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-zinc-500 mb-2">Branch</label>
                     <input 
                         type="text" 
                         value={localConfig.branch}
                         onChange={(e) => setLocalConfig({...localConfig, branch: e.target.value})}
-                        className="w-full px-4 py-2 border border-stone-300 rounded outline-none focus:border-stone-500"
+                        className="w-full px-4 py-3 border border-zinc-200 bg-white focus:border-zinc-900 outline-none transition-colors text-sm"
                         placeholder="main"
                     />
                   </div>
                   
                   <div className="pt-2">
-                    <label className="block text-sm font-medium text-stone-700 mb-1">GitHub Personal Access Token (Classic)</label>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-zinc-500 mb-2">Access Token</label>
                     <input 
                         type="password" 
                         value={localConfig.token || ''}
                         onChange={(e) => setLocalConfig({...localConfig, token: e.target.value})}
-                        className="w-full px-4 py-2 border border-stone-300 rounded outline-none focus:border-stone-500"
+                        className="w-full px-4 py-3 border border-zinc-200 bg-white focus:border-zinc-900 outline-none transition-colors text-sm"
                         placeholder="ghp_..."
                     />
-                    <p className="text-xs text-stone-500 mt-1">
-                        Token must have <code>repo</code> scope.
-                    </p>
                   </div>
 
-                  <div className="pt-4 mt-4 border-t border-stone-100">
+                  <div className="pt-6 mt-6 border-t border-zinc-200">
                       <button 
                         onClick={saveSettings}
                         disabled={isVerifying}
-                        className={`w-full py-2 rounded font-medium text-white transition-colors ${configSuccess ? 'bg-green-600' : 'bg-stone-900 hover:bg-stone-800'}`}
+                        className={`w-full py-4 text-xs uppercase tracking-[0.2em] font-bold text-white transition-all ${configSuccess ? 'bg-zinc-700' : 'bg-zinc-900 hover:bg-zinc-800'}`}
                       >
-                          {isVerifying ? 'Verifying...' : configSuccess ? 'Connected!' : 'Save Configuration'}
+                          {isVerifying ? 'Verifying...' : configSuccess ? 'Link Established' : 'Save Configuration'}
                       </button>
-                      {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
+                      {error && <p className="text-red-900 text-xs mt-3 text-center uppercase">{error}</p>}
                       {repoWarning && (
-                        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
-                           <strong>Attention:</strong> {repoWarning}
+                        <div className="mt-4 p-4 bg-amber-50 border border-amber-100 text-amber-900 text-xs">
+                           <strong>NOTE:</strong> {repoWarning}
                         </div>
                       )}
                   </div>
                   
                   {configSuccess && (
-                     <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded">
-                        <h4 className="text-blue-900 font-medium mb-2">🚀 Make Site Public</h4>
-                        <p className="text-sm text-blue-800 mb-3">
-                            To make the gallery visible to visitors who are not logged in, you must manually update 
-                            the <code>App.tsx</code> file with your repository details.
+                     <div className="mt-8 p-6 bg-white border border-zinc-200">
+                        <h4 className="text-zinc-900 font-serif mb-2">Public Deployment Code</h4>
+                        <p className="text-xs text-zinc-500 mb-3">
+                            Update <code>App.tsx</code> with the following to enable public viewing:
                         </p>
-                        <div className="bg-white p-3 rounded border border-blue-100 font-mono text-xs text-stone-600 overflow-x-auto">
+                        <div className="bg-zinc-50 p-4 border border-zinc-100 font-mono text-xs text-zinc-600 overflow-x-auto">
                             const PUBLIC_REPO_CONFIG: RepoConfig = &#123;<br/>
                             &nbsp;&nbsp;owner: '{localConfig.owner}',<br/>
                             &nbsp;&nbsp;repo: '{localConfig.repo}',<br/>
                             &nbsp;&nbsp;branch: '{localConfig.branch}',<br/>
                             &#125;;
                         </div>
-                        <p className="text-xs text-blue-700 mt-2">
-                            Copy the code above and paste it into the <code>PUBLIC_REPO_CONFIG</code> section at the top of <strong>App.tsx</strong>.
-                        </p>
                      </div>
                   )}
               </div>
@@ -300,34 +288,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
 
       {activeTab === 'upload' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
             {/* Left Col: Upload & Preview */}
             <div className="space-y-6">
             <div 
-                className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center transition-colors min-h-[300px] ${
-                    previewUrl ? 'border-stone-200 bg-stone-50' : 'border-stone-300 hover:border-stone-400 hover:bg-stone-50 cursor-pointer'
+                className={`border border-zinc-200 p-12 flex flex-col items-center justify-center text-center transition-all min-h-[400px] ${
+                    previewUrl ? 'bg-white' : 'bg-zinc-50 hover:bg-zinc-100 cursor-pointer'
                 }`}
                 onClick={() => !previewUrl && fileInputRef.current?.click()}
             >
                 {previewUrl ? (
-                    <div className="relative w-full h-full">
-                        <img src={previewUrl} alt="Preview" className="max-h-[400px] mx-auto object-contain shadow-lg" />
+                    <div className="relative w-full h-full flex items-center justify-center">
+                        <img src={previewUrl} alt="Preview" className="max-h-[350px] object-contain shadow-sm" />
                         <button 
                             onClick={(e) => { e.stopPropagation(); resetForm(); }}
-                            className="absolute top-2 right-2 bg-white/80 p-2 rounded-full hover:bg-white text-stone-600 shadow-sm"
+                            className="absolute -top-4 -right-4 bg-zinc-900 text-white w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-700"
                         >
                             ✕
                         </button>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto text-stone-400">
-                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        </div>
-                        <div>
-                            <p className="text-lg font-medium text-stone-900">Click to upload artwork</p>
-                            <p className="text-sm text-stone-500">JPG, PNG up to 5MB</p>
-                        </div>
+                        <span className="text-4xl text-zinc-300 font-serif italic">Upload</span>
+                        <p className="text-xs uppercase tracking-widest text-zinc-400">Select Image File</p>
                     </div>
                 )}
                 <input 
@@ -343,85 +326,74 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button
                     onClick={handleAnalyze}
                     disabled={isAnalysing || isUploading}
-                    className="w-full py-3 bg-stone-100 text-stone-900 border border-stone-200 font-medium rounded shadow-sm hover:bg-stone-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+                    className="w-full py-4 bg-white text-zinc-900 border border-zinc-200 hover:border-zinc-900 text-xs uppercase tracking-[0.2em] font-bold disabled:opacity-50 transition-all"
                 >
-                    {isAnalysing ? (
-                        <>
-                            <svg className="animate-spin h-5 w-5 text-stone-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            Analysing with Gemini...
-                        </>
-                    ) : (
-                        <>
-                            <span>✨</span> Auto-Generate Metadata
-                        </>
-                    )}
+                    {isAnalysing ? 'Analysing...' : 'Generate Metadata (Gemini)'}
                 </button>
             )}
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {error && <p className="text-red-900 text-xs text-center uppercase tracking-wide">{error}</p>}
             </div>
 
             {/* Right Col: Metadata Form */}
-            <div className="bg-white p-8 rounded-lg shadow-sm border border-stone-200 relative overflow-hidden">
+            <div className="relative">
                 {isUploading && (
-                    <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
-                         <svg className="animate-spin h-8 w-8 text-stone-900 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                         <p className="text-stone-900 font-medium">{uploadStatus}</p>
-                         <p className="text-stone-500 text-xs mt-2">Note: Public updates may take up to 5 mins to appear.</p>
+                    <div className="absolute inset-0 bg-white/95 z-10 flex flex-col items-center justify-center border border-zinc-100">
+                         <div className="w-12 h-1 bg-zinc-900 animate-pulse mb-4"></div>
+                         <p className="text-zinc-900 text-xs uppercase tracking-[0.2em]">{uploadStatus}</p>
                     </div>
                 )}
 
-                <h3 className="text-lg font-medium text-stone-900 mb-6">Artwork Details</h3>
-                <div className="space-y-5">
-                    <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">Title</label>
+                <h3 className="text-xl font-serif text-zinc-900 mb-8">Artwork Details</h3>
+                <div className="space-y-8">
+                    <div className="group">
+                        <label className="block text-xs font-bold uppercase tracking-wide text-zinc-400 mb-2 group-focus-within:text-zinc-900 transition-colors">Title</label>
                         <input 
                             type="text" 
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
-                            placeholder="Untitled"
+                            className="w-full px-0 py-2 border-b border-zinc-200 focus:border-zinc-900 outline-none transition-colors bg-transparent font-serif text-lg"
+                            placeholder="..."
                         />
                     </div>
                     
-                    <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">Medium</label>
+                    <div className="group">
+                        <label className="block text-xs font-bold uppercase tracking-wide text-zinc-400 mb-2 group-focus-within:text-zinc-900 transition-colors">Medium</label>
                         <input 
                             type="text" 
                             value={medium}
                             onChange={(e) => setMedium(e.target.value)}
-                            className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
-                            placeholder="e.g. Oil on Canvas"
+                            className="w-full px-0 py-2 border-b border-zinc-200 focus:border-zinc-900 outline-none transition-colors bg-transparent font-light"
+                            placeholder="..."
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">Curatorial Description</label>
+                    <div className="group">
+                        <label className="block text-xs font-bold uppercase tracking-wide text-zinc-400 mb-2 group-focus-within:text-zinc-900 transition-colors">Description</label>
                         <textarea 
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={6}
-                            className="w-full px-4 py-2 border border-stone-300 rounded focus:ring-1 focus:ring-stone-500 focus:border-stone-500 outline-none transition-shadow"
-                            placeholder="Generated description will appear here..."
+                            className="w-full px-4 py-4 bg-zinc-50 border border-zinc-100 focus:border-zinc-900 outline-none transition-colors font-light text-sm leading-relaxed"
+                            placeholder="..."
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">Tags</label>
+                        <label className="block text-xs font-bold uppercase tracking-wide text-zinc-400 mb-2">Tags</label>
                         <div className="flex flex-wrap gap-2 mb-2">
                             {tags.map((tag, idx) => (
-                                <span key={idx} className="bg-stone-100 text-stone-700 px-2 py-1 rounded text-xs flex items-center gap-1">
+                                <button key={idx} onClick={() => setTags(tags.filter((_, i) => i !== idx))} className="border border-zinc-200 text-zinc-500 hover:border-red-200 hover:text-red-400 px-3 py-1 text-[10px] uppercase tracking-widest transition-colors">
                                     {tag}
-                                    <button onClick={() => setTags(tags.filter((_, i) => i !== idx))} className="hover:text-red-500">×</button>
-                                </span>
+                                </button>
                             ))}
                         </div>
                     </div>
                     
-                    <div className="pt-4 border-t border-stone-100">
+                    <div className="pt-8">
                         <button 
                             onClick={handlePublish}
                             disabled={isUploading || !title}
-                            className="w-full py-3 bg-stone-900 text-white font-serif tracking-wide rounded hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="w-full py-4 bg-zinc-900 text-white text-xs uppercase tracking-[0.2em] font-bold hover:bg-zinc-800 disabled:opacity-50 transition-colors"
                         >
                             Publish to Gallery
                         </button>
@@ -432,19 +404,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
 
       {/* Existing Artworks List */}
-      <div className="mt-16">
-          <h3 className="text-xl font-serif text-stone-900 mb-6">Manage Collection ({artworks.length})</h3>
-          <p className="text-stone-500 text-sm mb-4">Note: Deleting items from the UI currently requires manual removal from the JSON/Images on GitHub to fully sync.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="mt-24 pt-12 border-t border-zinc-100">
+          <h3 className="text-lg font-serif text-zinc-900 mb-8">Catalogue Index</h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
               {artworks.map(art => (
-                  <div key={art.id} className="group relative border border-stone-200 rounded overflow-hidden">
-                      <div className="aspect-square bg-stone-100 relative">
-                          <img src={art.imageUrl} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" alt={art.title} />
+                  <div key={art.id} className="group cursor-pointer">
+                      <div className="aspect-square bg-zinc-50 mb-3 overflow-hidden">
+                          <img src={art.imageUrl} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt={art.title} />
                       </div>
-                      <div className="p-3 bg-white">
-                          <p className="font-medium text-stone-900 truncate">{art.title}</p>
-                          <p className="text-xs text-stone-500">{art.medium}</p>
-                      </div>
+                      <p className="font-serif text-sm text-zinc-900 truncate group-hover:underline decoration-zinc-200 underline-offset-4">{art.title}</p>
                   </div>
               ))}
           </div>
