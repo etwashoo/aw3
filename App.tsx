@@ -14,8 +14,8 @@ const ARTIST_PASSWORD = 'muse';
 // to match your GitHub repository details.
 // ----------------------------------------------------------------------
 const PUBLIC_REPO_CONFIG: RepoConfig = {
-  owner: '', // Enter your GitHub username here (e.g., 'alexandra-art')
-  repo: '',  // Enter your Repository name here (e.g., 'portfolio')
+  owner: 'etwashoo',
+  repo: 'aw3',
   branch: 'main',
 };
 // ----------------------------------------------------------------------
