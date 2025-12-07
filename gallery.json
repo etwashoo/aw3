@@ -1,5 +1,20 @@
 [
   {
+    "id": "23091d90-850b-4482-8db4-878592dea3ed",
+    "imageUrl": "https://raw.githubusercontent.com/etwashoo/aw3/main/images/1765123584070-pxl20231201092324046.jpg",
+    "title": "Winter's Golden Dawn",
+    "description": "This captivating oil on canvas transports the viewer to a serene winter landscape, bathed in the tender light of a rising sun. The artist's brushwork masterfully articulates a tactile quality, particularly evident in the generous impasto used to render the snow's soft, heavy texture upon the robust boughs of the fir trees and the gently curved roof of the humble cabin. A brilliant golden-yellow glow, streaked with vibrant green at the horizon, permeates the upper canvas, contrasting exquisitely with the deep, cool blues of the sky and the majestically silhouetted mountain range in the distance. This luminous palette creates a palpable warmth that permeates the frigid scene. The composition is elegantly structured, drawing the eye along a snow-covered path that gracefully curves into the middle ground, inviting exploration. A rustic fence, lightly dusted with snow, provides a subtle diagonal leading line, enhancing the sense of perspective. The cabin, a beacon of human warmth with a wisp of smoke curling from its chimney, anchors the left side of the composition, its sturdy wooden logs rendered with visible textural strokes. On the right, a cluster of snow-laden pines acts as a dramatic vertical counterpoint, through which the sun's radiant beams pierce, casting an ethereal glow and imbuing the entire scene with an atmosphere of tranquil solitude and comforting presence.",
+    "medium": "Oil on Canvas",
+    "tags": [
+      "Winterscape",
+      "Luminous sky",
+      "Cabin art",
+      "Textural brushwork",
+      "Serene landscape"
+    ],
+    "createdAt": 1765123588888
+  },
+  {
     "id": "8b79dc18-89e1-4122-b3a7-11e54a2a30e6",
     "imageUrl": "https://raw.githubusercontent.com/etwashoo/aw3/main/images/1765122449220-img38411.jpg",
     "title": "Crimson Roamer",
